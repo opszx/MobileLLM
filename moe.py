@@ -37,7 +37,6 @@ class ExpertFFN(nn.Module):
         self.gate_proj = BitLinear(d_model, d_intermediate)
         self.up_proj = BitLinear(d_model, d_intermediate)
         self.down_proj = BitLinear(d_intermediate, d_model)
-        self.norm = nn.LayerNorm(d_model)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # SwiGLU: swish(gate) * up

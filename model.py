@@ -269,7 +269,6 @@ class PhantomLM(nn.Module):
         )
 
         total_loss = lm_loss + total_aux_loss
-        total_loss = lm_loss + total_aux_loss
 
         return total_loss, logits, lm_loss, total_aux_loss
 

@@ -12,6 +12,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# ── Quantization toggle ───────────────────────────────────────────────────────
+# Set to False for small models (≤100M) where quantization noise > benefit.
+# Usage from notebook:  import bitlinear; bitlinear.QUANTIZE_ENABLED = False
+QUANTIZE_ENABLED = True
+
 
 # ── Straight-Through Estimator ────────────────────────────────────────────────
 # During forward pass  → use quantized weights (efficient inference)
@@ -113,7 +118,11 @@ class BitLinear(nn.Module):
         x: (batch, seq_len, in_features)
         returns: (batch, seq_len, out_features)
         """
-        # Step 1 — normalize input
+        # When quantization is disabled, act as plain nn.Linear
+        if not QUANTIZE_ENABLED:
+            return F.linear(x, self.weight, self.bias)
+
+        # Step 1 — normalize input (SubLN for quantization stability)
         x_norm = self.norm(x)
 
         # Step 2 — quantize weights to ternary
@@ -169,6 +178,10 @@ class Linear4bit(nn.Module):
         nn.init.trunc_normal_(self.weight, std=0.02)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # When quantization is disabled, act as plain nn.Linear
+        if not QUANTIZE_ENABLED:
+            return F.linear(x, self.weight, self.bias)
+
         x_norm = self.norm(x)
         w_quant, w_scale = quantize_weights_4bit(self.weight)
         out = F.linear(x_norm, w_quant / 7.0 * w_scale)

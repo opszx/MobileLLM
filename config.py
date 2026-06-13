@@ -90,6 +90,20 @@ class PhantomLMConfig:
         )
 
     @classmethod
+    def phantom_medium(cls):
+        """~50M parameter model — sweet spot for Kaggle T4 (16GB)
+        Enough capacity to learn coherent English from TinyStories.
+        Trains in ~3-4 hours on T4 with 50M tokens.
+        """
+        return cls(
+            d_model=512, n_layers=12, n_heads=8, n_kv_heads=2,
+            head_dim=64, d_state=16, expert_intermediate=1024,
+            n_experts=4, n_experts_active=2,
+            mamba_zone_end=3, mixed_zone_end=9,
+            max_seq_len=512
+        )
+
+    @classmethod
     def phantom_tiny(cls):
         """Tiny model for quick testing — CPU friendly"""
         return cls(

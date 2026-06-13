@@ -1,7 +1,6 @@
 """
 Mamba Block — Selective State Space Model
 Memory-efficient version for Kaggle T4 training.
-Recomputes A_bar/B_bar in backward instead of storing them — saves ~6GB on 350M.
 """
 
 import torch
@@ -13,73 +12,45 @@ from einops import rearrange, repeat
 from bitlinear import BitLinear
 
 
-class SelectiveScan(torch.autograd.Function):
-    """
-    Memory-efficient selective scan.
-    Does NOT store A_bar/B_bar in ctx — recomputes them in backward.
-    Saves ~6GB VRAM on 350M model vs naive implementation.
-    """
-    @staticmethod
-    def forward(ctx, x, dt, A, B, C, D_skip):
-        B_size, L, D_inner = x.shape
-        N       = A.shape[1]
-        device  = x.device
-        dtype   = x.dtype
-
-        dt_A  = dt.unsqueeze(-1) * A.unsqueeze(0).unsqueeze(0)
-        A_bar = torch.exp(dt_A)
-        B_bar = dt.unsqueeze(-1) * B.unsqueeze(2)
-
-        h  = torch.zeros(B_size, D_inner, N, device=device, dtype=dtype)
-        ys = torch.zeros(B_size, L,       D_inner, device=device, dtype=dtype)
-        for t in range(L):
-            h        = A_bar[:, t] * h + B_bar[:, t] * x[:, t].unsqueeze(-1)
-            ys[:, t] = (h * C[:, t].unsqueeze(1)).sum(-1)
-        ys = ys + x * D_skip.unsqueeze(0).unsqueeze(0)
-
-        # Save only small tensors — NOT A_bar/B_bar (those are huge)
-        ctx.save_for_backward(x, dt, A, B, C, D_skip)
-        return ys
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        x, dt, A, B, C, D_skip = ctx.saved_tensors
-        B_size, L, D_inner = x.shape
-        N      = A.shape[1]
-        device = x.device
-        dtype  = x.dtype
-
-        # Recompute A_bar, B_bar — costs compute but saves memory
-        dt_A  = dt.unsqueeze(-1) * A.unsqueeze(0).unsqueeze(0)
-        A_bar = torch.exp(dt_A)
-        B_bar = dt.unsqueeze(-1) * B.unsqueeze(2)
-
-        grad_D  = (grad_output * x).sum(dim=[0, 1])
-        grad_x  = grad_output * D_skip.unsqueeze(0).unsqueeze(0)
-        grad_h  = torch.zeros(B_size, D_inner, N, device=device, dtype=dtype)
-        grad_B  = torch.zeros_like(B)
-        grad_C  = torch.zeros_like(C)
-        grad_dt = torch.zeros_like(dt)
-
-        # Recompute hidden states for backward
-        h  = torch.zeros(B_size, D_inner, N, device=device, dtype=dtype)
-        hs = []
-        for t in range(L):
-            h = A_bar[:, t] * h + B_bar[:, t] * x[:, t].unsqueeze(-1)
-            hs.append(h.clone())
-
-        for t in reversed(range(L)):
-            grad_C[:, t]  = (grad_output[:, t].unsqueeze(-1) * hs[t]).sum(1)
-            grad_h       += grad_output[:, t].unsqueeze(-1) * C[:, t].unsqueeze(1)
-            if t > 0:
-                grad_h = grad_h * A_bar[:, t]
-            grad_x[:, t] += (grad_h * B_bar[:, t]).sum(-1)
-
-        return grad_x, grad_dt, None, grad_B, grad_C, grad_D
-
-
 def selective_scan(x, dt, A, B, C, D_skip):
-    return SelectiveScan.apply(x, dt, A, B, C, D_skip)
+    """
+    Selective scan — uses PyTorch autograd for correct gradients.
+
+    The previous custom autograd.Function had an incomplete backward pass
+    (grad_dt and grad_B were always zero). This version lets PyTorch
+    compute all gradients correctly through the recurrence.
+
+    Memory cost: O(B * L * D_inner * N) for the computation graph.
+    Acceptable for models up to ~350M on T4 (16GB).
+
+    Args:
+        x:      (B, L, D_inner)  — input after conv + activation
+        dt:     (B, L, D_inner)  — learned time step
+        A:      (D_inner, N)     — state transition (negative, log-parameterized)
+        B:      (B, L, N)        — input-to-state projection
+        C:      (B, L, N)        — state-to-output projection
+        D_skip: (D_inner,)       — skip connection weight
+    Returns:
+        (B, L, D_inner)
+    """
+    B_size, L, D_inner = x.shape
+    N = A.shape[1]
+
+    # Discretize continuous parameters
+    dt_A = dt.unsqueeze(-1) * A.unsqueeze(0).unsqueeze(0)   # (B, L, D, N)
+    A_bar = torch.exp(dt_A)                                  # (B, L, D, N)
+    B_bar = dt.unsqueeze(-1) * B.unsqueeze(2)                # (B, L, D, N)
+
+    # Sequential scan — autograd builds the graph through the loop
+    h = torch.zeros(B_size, D_inner, N, device=x.device, dtype=x.dtype)
+    ys = []
+    for t in range(L):
+        h = A_bar[:, t] * h + B_bar[:, t] * x[:, t].unsqueeze(-1)
+        y_t = (h * C[:, t].unsqueeze(1)).sum(-1)
+        ys.append(y_t)
+
+    ys = torch.stack(ys, dim=1)                              # (B, L, D_inner)
+    return ys + x * D_skip.unsqueeze(0).unsqueeze(0)         # skip connection
 
 
 class MambaBlock(nn.Module):
