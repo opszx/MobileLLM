@@ -34,7 +34,7 @@ def evaluate_zeroshot_logic(model, tokenizer):
             # Function to calculate probability of ending given prefix
             def score_completion(ending_ids):
                 full_ids = torch.cat([prefix_ids, ending_ids], dim=1)
-                logits, _ = model(full_ids)
+                logits = model(full_ids)
                 
                 # We only care about the logits predicting the ending tokens
                 # Shift logits by 1 (predicting next token)

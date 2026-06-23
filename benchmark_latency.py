@@ -33,7 +33,7 @@ def benchmark_latency(model, tokenizer, max_new_tokens=50, context_lengths=[128,
             # Generate `max_new_tokens` autoregressively
             current_ids = input_ids
             for _ in range(max_new_tokens):
-                logits, _ = model(current_ids)
+                logits = model(current_ids)
                 next_token = torch.argmax(logits[:, -1, :], dim=-1).unsqueeze(-1)
                 current_ids = torch.cat([current_ids, next_token], dim=1)
                 
