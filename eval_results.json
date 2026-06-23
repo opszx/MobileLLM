@@ -1,0 +1,50 @@
+{
+  "quality": {
+    "arc": 0.4,
+    "hellaswag": 0.0
+  },
+  "efficiency": {
+    "64": {
+      "tokens_per_sec": 736.7,
+      "latency_ms": 86.87,
+      "ram_mb": 80.6
+    },
+    "128": {
+      "tokens_per_sec": 1024.5,
+      "latency_ms": 124.94,
+      "ram_mb": 88.4
+    },
+    "256": {
+      "tokens_per_sec": 1194.0,
+      "latency_ms": 214.41,
+      "ram_mb": 105.0
+    }
+  },
+  "ablation": {
+    "1. PhantomLM (full)": {
+      "perplexity": 34267.86,
+      "tokens_per_sec": 973.4,
+      "parameters": 16690688
+    },
+    "2. No Mamba (pure Transformer)": {
+      "perplexity": 32192.72,
+      "tokens_per_sec": 2758.2,
+      "parameters": 15022592
+    },
+    "3. No MoE (standard FFN)": {
+      "perplexity": 31934.18,
+      "tokens_per_sec": 1075.2,
+      "parameters": 15507968
+    },
+    "4. Uniform attention placement": {
+      "perplexity": 34479.0,
+      "tokens_per_sec": 954.3,
+      "parameters": 16690688
+    },
+    "5. No selective precision (all 1.58-bit)": {
+      "perplexity": 35318.23,
+      "tokens_per_sec": 929.5,
+      "parameters": 16690688
+    }
+  }
+}

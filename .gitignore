@@ -5,3 +5,7 @@ __pycache__/
 *.ckpt
 *.bin
 *.safetensors
+
+*.pdf
+*.zip
+MobileLLM_Code/
