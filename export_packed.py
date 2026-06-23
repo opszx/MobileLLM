@@ -11,7 +11,7 @@ def pack_4bit_weights(weight_tensor):
     w_quant = torch.round(weight_tensor / scale).clamp(-8, 7)
     
     # 2. Shift from [-8, 7] to [0, 15] for unsigned storage
-    flat = (w_quant + 8).flatten().cpu().numpy().astype(np.uint8)
+    flat = (w_quant + 8).flatten().to(torch.uint8).cpu().numpy()
     
     # 3. Pad if odd length
     if len(flat) % 2 != 0:
@@ -25,7 +25,7 @@ def pack_8bit_weights(weight_tensor):
     """Pack 8-bit weights, 1 value per byte."""
     scale = weight_tensor.abs().max() / 127.0
     quantized = torch.round(weight_tensor / scale).clamp(-128, 127)
-    return quantized.flatten().cpu().numpy().astype(np.int8).tobytes(), scale.item()
+    return quantized.flatten().to(torch.int8).cpu().numpy().tobytes(), scale.item()
 
 def export_phantomlm_deployment(model_checkpoint_path, output_bin_path='phantomlm_deployment_v2.bin'):
     """
