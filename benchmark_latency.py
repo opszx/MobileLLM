@@ -17,6 +17,10 @@ def benchmark_latency(model, tokenizer, max_new_tokens=50, context_lengths=[128,
     print("-" * 65)
     
     for ctx_len in context_lengths:
+        if ctx_len > model.config.max_seq_len:
+            print(f"Skipping {ctx_len:<6} | (Exceeds model max_seq_len of {model.config.max_seq_len})")
+            continue
+            
         # Create dummy input of sequence length `ctx_len`
         input_ids = torch.randint(0, model.config.vocab_size, (1, ctx_len), device=device)
         
@@ -33,7 +37,8 @@ def benchmark_latency(model, tokenizer, max_new_tokens=50, context_lengths=[128,
             # Generate `max_new_tokens` autoregressively
             current_ids = input_ids
             for _ in range(max_new_tokens):
-                logits = model(current_ids)
+                idx_cond = current_ids[:, -model.config.max_seq_len:]
+                logits = model(idx_cond)
                 next_token = torch.argmax(logits[:, -1, :], dim=-1).unsqueeze(-1)
                 current_ids = torch.cat([current_ids, next_token], dim=1)
                 
