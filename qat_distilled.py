@@ -15,7 +15,7 @@ print("Loading FP16 Teacher model...")
 # Create a fresh model copy as teacher (NO quantization)
 bitlinear.QUANTIZE_ENABLED = False
 teacher = PhantomLM(config).to(device)
-ckpt = torch.load(f'{CHECKPOINT_DIR}/phantomlm_best.pt', map_location=device, weights_only=False)
+ckpt = torch.load(f'{CHECKPOINT_DIR}/phantomlm_final.pt', map_location=device, weights_only=False)
 teacher.load_state_dict(ckpt['model_state_dict'])
 teacher.eval()
 for p in teacher.parameters():
