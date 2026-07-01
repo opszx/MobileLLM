@@ -39,7 +39,7 @@ def get_log_prob(context, completion):
         return -9999.0
         
     with torch.no_grad():
-        _, logits, _, _ = model(input_ids, return_loss=True)
+        logits = model(input_ids, return_loss=False)
         
     # Get probabilities for the target tokens
     shift_logits = logits[0, :-1, :]
