@@ -8,6 +8,9 @@ from config import PhantomLMConfig
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Load Tokenizer and Model
+import bitlinear
+bitlinear.QUANTIZE_ENABLED = False
+
 print("Loading Model and Tokenizer...")
 tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-neo-125M')
 config = PhantomLMConfig.phantom_medium()

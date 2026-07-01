@@ -66,6 +66,9 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print("Loading Model for Comprehensive Evaluation...")
     
+    import bitlinear
+    bitlinear.QUANTIZE_ENABLED = False
+    
     tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-neo-125M')
     config = PhantomLMConfig.phantom_medium()
     config.vocab_size = 50257
