@@ -67,7 +67,7 @@ if __name__ == "__main__":
     print("Loading Model for Comprehensive Evaluation...")
     
     tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-neo-125M')
-    config = PhantomLMConfig()
+    config = PhantomLMConfig.phantom_medium()
     
     # Load your best FP16 model
     try:
