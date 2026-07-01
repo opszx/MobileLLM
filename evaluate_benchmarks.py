@@ -11,6 +11,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print("Loading Model and Tokenizer...")
 tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-neo-125M')
 config = PhantomLMConfig.phantom_medium()
+config.vocab_size = 50257
 
 try:
     model = PhantomLM(config).to(device)

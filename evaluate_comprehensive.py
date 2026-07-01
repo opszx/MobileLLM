@@ -68,6 +68,7 @@ if __name__ == "__main__":
     
     tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-neo-125M')
     config = PhantomLMConfig.phantom_medium()
+    config.vocab_size = 50257
     
     # Load your best FP16 model
     try:
